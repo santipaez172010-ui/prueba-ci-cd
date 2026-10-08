@@ -1,0 +1,62 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Verificar archivos requeridos
+        run: |
+          echo "Verificando existencia de index.html y script.js..."
+          MISSING=0
+
+          if [ ! -f "index.html" ]; then
+            echo "::error file=index.html::El archivo index.html no existe."
+            MISSING=1
+          else
+            echo "✔ index.html encontrado"
+          fi
+
+          if [ ! -f "script.js" ]; then
+            echo "::error file=script.js::El archivo script.js no existe."
+            MISSING=1
+          else
+            echo "✔ script.js encontrado"
+          fi
+
+          if [ "$MISSING" -ne 0 ]; then
+            echo "Fallo en la validación: faltan archivos requeridos para el despliegue."
+            exit 1
+          fi
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir artefacto
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Desplegar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
